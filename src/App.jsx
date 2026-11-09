@@ -9,6 +9,7 @@ import OrdersView from './components/OrdersView.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import AIBargainModal from './components/AIBargainModal.jsx';
 import { fetchProducts } from './services/api.js';
+import { products as existingProducts } from './data/products.js';
 import './App.css';
 
 /* ─── LocalStorage Persistence Keys ───────────────────────── */
@@ -84,7 +85,7 @@ export default function App() {
       if (requestId === productRequestId.current) setProducts(items);
     } catch (error) {
       if (requestId === productRequestId.current) {
-        setProducts([]);
+        setProducts(existingProducts);
         setProductsError(error.message || 'An unexpected error occurred while loading products.');
       }
     } finally {
@@ -100,7 +101,7 @@ export default function App() {
       })
       .catch(error => {
         if (requestId === productRequestId.current) {
-          setProducts([]);
+          setProducts(existingProducts);
           setProductsError(error.message || 'An unexpected error occurred while loading products.');
         }
       })

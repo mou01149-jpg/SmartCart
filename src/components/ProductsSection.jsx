@@ -133,13 +133,24 @@ export default function ProductsSection({
           </div>
         </div>
 
+        {error && catalog.length > 0 && (
+          <div className="products-error" role="alert">
+            <p>{error} Showing the original SmartCart catalog for now.</p>
+            {onRefresh && (
+              <button className="btn btn-outline btn-sm" onClick={onRefresh}>
+                Retry
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Product grid */}
         {isLoading ? (
           <div className="no-products" role="status" aria-live="polite">
             <span className="products-spinner" aria-hidden="true" />
             <p>Loading products...</p>
           </div>
-        ) : error ? (
+        ) : error && catalog.length === 0 ? (
           <div className="no-products" role="alert">
             <h3>Products could not be loaded</h3>
             <p>{error}</p>

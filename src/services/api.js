@@ -9,6 +9,7 @@
  */
 
 import { resolveProductImage } from '../utils/imageResolver.js';
+import { products as existingProducts } from '../data/products.js';
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
@@ -87,11 +88,22 @@ export async function fetchProducts({ signal } = {}) {
     throw new Error('The product API response did not contain a product list.');
   }
 
-  return fetchedList.map((item, index) => {
+  const existingById = new Map(
+    existingProducts.map(product => [String(product.id), {
+      ...product,
+      image: resolveProductImage(product.image, product.name),
+    }])
+  );
+
+  const databaseProducts = fetchedList.map((item, index) => {
     const name = item.name ?? item.productName;
     const category = item.category;
     const price = Number(item.price);
     const id = item.id ?? item.productId ?? item.sku ?? name;
+    const normalizedId = typeof id === 'string' && !Number.isNaN(Number(id))
+      ? Number(id)
+      : id;
+    const existing = existingById.get(String(normalizedId));
 
     if (
       !name ||
@@ -109,16 +121,32 @@ export async function fetchProducts({ signal } = {}) {
     }
 
     return {
+      ...existing,
       ...item,
-      id: typeof id === 'string' && !Number.isNaN(Number(id)) ? Number(id) : id,
+      id: normalizedId,
       name,
       category,
       price,
-      image: resolveProductImage(item.image ?? item.imageUrl, name),
-      rating: Number.isFinite(Number(item.rating)) ? Number(item.rating) : 0,
-      reviews: Number.isFinite(Number(item.reviews)) ? Number(item.reviews) : 0,
+      image: resolveProductImage(item.image ?? item.imageUrl ?? existing?.image, name),
+      rating: item.rating === undefined
+        ? (existing?.rating ?? 0)
+        : (Number.isFinite(Number(item.rating)) ? Number(item.rating) : 0),
+      reviews: item.reviews === undefined
+        ? (existing?.reviews ?? 0)
+        : (Number.isFinite(Number(item.reviews)) ? Number(item.reviews) : 0),
     };
   });
+
+  if (fetchedList.length === 0) return [];
+
+  for (const product of databaseProducts) {
+    existingById.set(String(product.id), {
+      ...existingById.get(String(product.id)),
+      ...product,
+    });
+  }
+
+  return [...existingById.values()];
 }
 
 /**
