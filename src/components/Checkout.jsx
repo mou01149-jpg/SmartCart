@@ -167,7 +167,12 @@ export default function Checkout({
 
           {/* Delivery estimate */}
           <div className="delivery-banner">
-            <span>📦 Estimated Delivery:</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="1" y="3" width="15" height="13"/>
+              <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+            <span>Estimated Delivery:</span>
             <strong>{completedOrder.estimatedDelivery}</strong>
           </div>
 
@@ -253,13 +258,13 @@ export default function Checkout({
         <div className="gateway-modal-overlay">
           <div className="gateway-modal-box">
             <div className="gateway-logo">
-              🛒 Smart<span>Cart</span> Secure Gateway
+              Smart<span>Cart</span> Secure Gateway
             </div>
             <div className="gateway-spinner-ring" />
             <h3>Processing Payment</h3>
             <p className="gateway-stage-text">{processingStage}</p>
             <div className="gateway-trust-banner">
-              🔒 256-Bit SSL Encryption • PCI-DSS Certified
+              256-Bit SSL Encryption • PCI-DSS Certified
             </div>
           </div>
         </div>
@@ -490,9 +495,12 @@ export default function Checkout({
                             <span className="item-orig">₹{item.originalPrice}</span>
                           )}
                           <span className="item-qty">Qty: {item.quantity}</span>
+                          {item.customDeal && (
+                            <span className="checkout-deal-badge">🏷️ {item.customDeal}</span>
+                          )}
                         </div>
                         <div className="delivery-timing">
-                          🚚 Delivery by Tomorrow, Free
+                          Delivery by Tomorrow • Free Shipping
                         </div>
                       </div>
                     </div>
@@ -536,7 +544,7 @@ export default function Checkout({
                       onChange={() => setPaymentMethod('upi')}
                     />
                     <span className="method-name">UPI (Google Pay, PhonePe, Paytm, QR)</span>
-                    <span className="method-badge-fast">⚡ Instant</span>
+                    <span className="method-badge-fast">Instant</span>
                   </label>
 
                   {paymentMethod === 'upi' && (
@@ -800,11 +808,13 @@ export default function Checkout({
           </div>
 
           <div className="savings-banner">
-            🎉 You will save ₹{discount.toLocaleString('en-IN')} on this order
+            You will save ₹{discount.toLocaleString('en-IN')} on this order
           </div>
 
           <div className="safety-guarantee">
-            <span className="shield-icon">🛡️</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
             <span>Safe and Secure Payments. Easy returns. 100% Authentic products.</span>
           </div>
         </aside>

@@ -8,7 +8,7 @@ function formatPrice(p) {
   }).format(p);
 }
 
-export default function Cart({ cart, onUpdateQty, onRemove, onClose, onCheckout }) {
+export default function Cart({ cart, onUpdateQty, onRemove, onClose, onCheckout, onBargain }) {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -32,7 +32,11 @@ export default function Cart({ cart, onUpdateQty, onRemove, onClose, onCheckout 
 
         {cart.length === 0 ? (
           <div className="cart-empty" role="status">
-            <div className="cart-empty-icon" aria-hidden="true">🛒</div>
+            <div className="cart-empty-icon" aria-hidden="true">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+              </svg>
+            </div>
             <h3>Your cart is empty</h3>
             <p>Add some products to get started!</p>
             <button className="btn btn-primary" onClick={onClose}>
@@ -61,7 +65,24 @@ export default function Cart({ cart, onUpdateQty, onRemove, onClose, onCheckout 
                   <div className="cart-item-info">
                     <div className="cart-item-category">{item.category}</div>
                     <div className="cart-item-name">{item.name}</div>
-                    <div className="cart-item-price">{formatPrice(item.price)}</div>
+                    <div className="cart-item-price-wrap">
+                      <span className="cart-item-price">{formatPrice(item.price)}</span>
+                      {item.customDeal && (
+                        <span className="cart-deal-pill">🏷️ {item.customDeal}</span>
+                      )}
+                    </div>
+                    {onBargain && (
+                      <button
+                        className="cart-bargain-link"
+                        onClick={() => onBargain(item)}
+                        title="Negotiate a better price with SmartCart AI"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Bargain with AI
+                      </button>
+                    )}
                   </div>
 
                   {/* Qty controls */}
@@ -146,6 +167,21 @@ export default function Cart({ cart, onUpdateQty, onRemove, onClose, onCheckout 
                 </svg>
                 Proceed to Checkout
               </button>
+
+              {onBargain && cart.length > 0 && (
+                <div className="cart-bargain-promo">
+                  <div className="cart-bargain-promo-content">
+                    <span className="cart-bargain-promo-title">🤖 Bargain with AI</span>
+                    <p>Make a counter-offer on your cart items to unlock extra discount codes!</p>
+                  </div>
+                  <button
+                    className="btn btn-outline btn-sm cart-bargain-promo-btn"
+                    onClick={() => onBargain(cart[0])}
+                  >
+                    Start Bargaining
+                  </button>
+                </div>
+              )}
 
               <div className="secure-badges" aria-label="Security and payment information">
                 <span title="Secure payment">🔒 Secure</span>

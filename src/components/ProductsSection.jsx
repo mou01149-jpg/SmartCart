@@ -3,7 +3,13 @@ import ProductCard from './ProductCard.jsx';
 import { products, CATEGORIES } from '../data/products.js';
 import './ProductsSection.css';
 
-export default function ProductsSection({ onAddToCart, wishlist, onToggleWishlist, onTryOn }) {
+export default function ProductsSection({
+  onAddToCart,
+  wishlist,
+  onToggleWishlist,
+  onTryOn,
+  onBargain,
+}) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('default');
@@ -124,13 +130,18 @@ export default function ProductsSection({ onAddToCart, wishlist, onToggleWishlis
                   wishlist={wishlist}
                   onToggleWishlist={onToggleWishlist}
                   onTryOn={onTryOn}
+                  onBargain={onBargain}
                 />
               </div>
             ))}
           </div>
         ) : (
           <div className="no-products" role="status" aria-live="polite">
-            <div className="no-products-icon" aria-hidden="true">🔍</div>
+            <div className="no-products-icon" aria-hidden="true">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </div>
             <h3>No products found</h3>
             <p>Try adjusting your search or filter criteria.</p>
             <button

@@ -1,337 +1,463 @@
 import React from 'react';
 
 /**
- * Interactive AR Try-On Overlays for products.
- * Returns high-fidelity vector / SVG cutouts positioned and scaled dynamically.
+ * Photorealistic AR Wearable Engine.
+ * Renders the genuine product as an isolated, wearable AR overlay on the user's face,
+ * torso, head, or wrist — with NO box boundaries, NO cards, and NO distracting borders.
+ * Includes optional toggle to view the full studio catalog photo.
  */
 export default function TryOnOverlay({
   product,
   position,
-  scale,
-  rotation,
-  opacity,
-  isDragging,
+  scale = 1,
+  rotation = 0,
+  opacity = 0.96,
+  isDragging = false,
   onPointerDown,
+  lightingMode = 'daylight',
+  isLayerActive = true,
+  onSelectLayer,
+  displayMode = 'cutout', // 'cutout' (seamless wearable) | 'photo' (catalog studio shot)
+  selectedColorHex = null,
 }) {
   if (!product) return null;
 
-  const style = {
+  // Dynamic light tint color based on ambient simulator
+  const lightTints = {
+    'daylight': 'rgba(255, 255, 255, 0.08)',
+    'golden-hour': 'rgba(245, 158, 11, 0.26)',
+    'neon': 'rgba(236, 72, 153, 0.22)',
+    'office': 'rgba(186, 230, 253, 0.12)',
+    'candlelight': 'rgba(234, 88, 12, 0.30)',
+    'studio': 'rgba(255, 255, 255, 0.16)',
+  };
+
+  const ambientTint = lightTints[lightingMode] || lightTints['daylight'];
+  const activeColor = selectedColorHex || (product.colors && product.colors[0]?.hex) || '#18181b';
+
+  const containerStyle = {
     position: 'absolute',
     left: `${position.x}%`,
     top: `${position.y}%`,
     transform: `translate(-50%, -50%) scale(${scale}) rotate(${rotation}deg)`,
-    opacity: opacity,
+    opacity,
     cursor: isDragging ? 'grabbing' : 'grab',
     userSelect: 'none',
     touchAction: 'none',
-    zIndex: 20,
-    filter: 'drop-shadow(0 8px 16px rgba(0, 0, 0, 0.35))',
-    transition: isDragging ? 'none' : 'transform 0.05s ease-out',
+    zIndex: isLayerActive ? 25 : 20,
+    filter: 'drop-shadow(0 14px 28px rgba(0, 0, 0, 0.40)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25))',
+    transition: isDragging ? 'none' : 'transform 0.06s ease-out',
   };
 
-  function renderProductGraphic() {
+  /* Render Full Studio Catalog Photo when requested */
+  if (displayMode === 'photo') {
+    return (
+      <div
+        className={`tryon-overlay-container ${isLayerActive ? 'layer-active' : ''}`}
+        style={containerStyle}
+        onPointerDown={(e) => {
+          if (onSelectLayer) onSelectLayer(product.id);
+          if (onPointerDown) onPointerDown(e, product.id);
+        }}
+        title={`Drag to reposition ${product.name}`}
+      >
+        <div style={{
+          width: '240px',
+          height: '240px',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+          position: 'relative',
+          background: '#ffffff',
+          border: '1px solid rgba(255,255,255,0.2)',
+        }}>
+          <img
+            src={product.image}
+            alt={product.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            draggable={false}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            left: '8px',
+            right: '8px',
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(8px)',
+            color: '#ffffff',
+            padding: '4px 8px',
+            borderRadius: '8px',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            display: 'flex',
+            justifyContent: 'space-between',
+          }}>
+            <span>{product.name}</span>
+            <span style={{ color: '#38bdf8' }}>₹{product.price}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* Render Seamless Isolated AR Wearable Cutout */
+  function renderWearableCutout() {
     switch (product.id) {
-      // 1: Classic Black T-Shirt
+      /* ────────────────────────────────────────────────────────
+         1: CLASSIC T-SHIRT (Torso Fit)
+         ──────────────────────────────────────────────────────── */
       case 1:
         return (
-          <div style={{ width: '320px', height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 400 400" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ width: '340px', height: '340px', position: 'relative' }}>
+            <svg viewBox="0 0 400 400" width="100%" height="100%" fill="none">
               <defs>
-                <linearGradient id="blackTeeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#2a2a2e" />
-                  <stop offset="45%" stopColor="#17171a" />
-                  <stop offset="100%" stopColor="#0a0a0c" />
+                <linearGradient id="teeFabricGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor={activeColor} />
+                  <stop offset="60%" stopColor={activeColor} />
+                  <stop offset="100%" stopColor="#09090b" />
                 </linearGradient>
-                <linearGradient id="teeFold" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#3a3a42" stopOpacity="0.6" />
-                  <stop offset="100%" stopColor="#111114" stopOpacity="0" />
+                <linearGradient id="teeDrapeFolds" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#000000" stopOpacity="0.45" />
+                  <stop offset="30%" stopColor="#000000" stopOpacity="0.05" />
+                  <stop offset="70%" stopColor="#000000" stopOpacity="0.05" />
+                  <stop offset="100%" stopColor="#000000" stopOpacity="0.45" />
                 </linearGradient>
               </defs>
-              {/* Main T-Shirt Body */}
+
+              {/* T-Shirt Torso Silhouette */}
               <path
-                d="M 140 70 Q 200 110 260 70 L 330 115 L 295 185 L 260 160 L 265 370 L 135 370 L 140 160 L 105 185 L 70 115 Z"
-                fill="url(#blackTeeGrad)"
-                stroke="#444450"
+                d="M 135 60 Q 200 95 265 60 L 340 110 L 305 185 L 265 155 L 270 380 L 130 380 L 135 155 L 95 185 L 60 110 Z"
+                fill="url(#teeFabricGrad)"
+              />
+              <path
+                d="M 135 60 Q 200 95 265 60 L 340 110 L 305 185 L 265 155 L 270 380 L 130 380 L 135 155 L 95 185 L 60 110 Z"
+                fill="url(#teeDrapeFolds)"
+              />
+
+              {/* Dynamic Fabric Fold Shadows */}
+              <path d="M 140 160 Q 180 240 150 370" stroke="rgba(0,0,0,0.5)" strokeWidth="6" fill="none" opacity="0.6" />
+              <path d="M 260 160 Q 220 240 250 370" stroke="rgba(0,0,0,0.5)" strokeWidth="6" fill="none" opacity="0.6" />
+
+              {/* Ribbed Crewneck Collar */}
+              <path
+                d="M 135 60 Q 200 95 265 60 Q 200 112 135 60"
+                fill="#18181b"
+                stroke="rgba(255,255,255,0.15)"
                 strokeWidth="2"
               />
-              {/* Collar ribbing */}
-              <path
-                d="M 140 70 Q 200 110 260 70 Q 200 125 140 70"
-                fill="#1f1f24"
-                stroke="#555565"
-                strokeWidth="1.5"
-              />
-              {/* Fold highlights */}
-              <path d="M 145 170 Q 180 230 155 350" stroke="url(#teeFold)" strokeWidth="3" fill="none" />
-              <path d="M 255 170 Q 220 230 245 350" stroke="url(#teeFold)" strokeWidth="3" fill="none" />
-              <path d="M 195 130 L 195 365" stroke="rgba(255,255,255,0.06)" strokeWidth="2" />
-              {/* SmartCart subtle chest logo */}
-              <circle cx="230" cy="180" r="10" fill="#7c3aed" opacity="0.85" />
-              <path d="M 226 180 L 229 183 L 235 176" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
+
+              {/* Ambient lighting tint */}
+              <rect x="0" y="0" width="400" height="400" fill={ambientTint} style={{ mixBlendMode: 'color-dodge' }} />
             </svg>
           </div>
         );
 
-      // 2: Premium White Sneakers
+      /* ────────────────────────────────────────────────────────
+         2: PREMIUM WHITE SNEAKERS (Athletic Footwear)
+         ──────────────────────────────────────────────────────── */
       case 2:
         return (
-          <div style={{ width: '280px', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 350 200" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ width: '310px', height: '175px', position: 'relative' }}>
+            <svg viewBox="0 0 350 200" width="100%" height="100%" fill="none">
               <defs>
-                <linearGradient id="sneakerWhite" x1="0%" y1="0%" x2="0%" y2="100%">
+                <linearGradient id="sneakerBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="#ffffff" />
-                  <stop offset="100%" stopColor="#e5e7eb" />
+                  <stop offset="80%" stopColor="#f1f5f9" />
+                  <stop offset="100%" stopColor="#e2e8f0" />
                 </linearGradient>
-                <linearGradient id="sneakerSole" x1="0%" y1="0%" x2="100%" y2="0%">
+                <linearGradient id="sneakerSoleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#7c3aed" />
                   <stop offset="100%" stopColor="#6366f1" />
                 </linearGradient>
               </defs>
+
               {/* Shoe Body */}
               <path
-                d="M 50 140 C 60 110, 110 90, 150 100 C 180 85, 230 80, 270 120 C 310 135, 330 150, 310 165 L 50 165 C 40 165, 40 150, 50 140 Z"
-                fill="url(#sneakerWhite)"
+                d="M 45 138 C 55 105, 105 82, 148 92 C 178 78, 235 75, 275 115 C 315 130, 335 145, 318 168 L 42 168 C 32 168, 35 150, 45 138 Z"
+                fill="url(#sneakerBodyGrad)"
                 stroke="#cbd5e1"
                 strokeWidth="2"
               />
-              {/* Sole */}
-              <rect x="40" y="165" width="280" height="20" rx="8" fill="url(#sneakerSole)" />
-              <rect x="40" y="180" width="280" height="6" rx="3" fill="#4338ca" />
-              {/* Purple Accent Stripe */}
-              <path d="M 120 120 Q 180 125 240 145" stroke="#7c3aed" strokeWidth="6" strokeLinecap="round" />
-              {/* Eyelets and laces */}
-              <path d="M 160 105 L 185 108 M 165 115 L 190 118 M 170 125 L 195 128" stroke="#94a3b8" strokeWidth="3" strokeLinecap="round" />
+
+              {/* Cushioned Outsole */}
+              <path
+                d="M 38 168 L 320 168 C 326 168, 328 178, 318 184 L 44 184 C 34 184, 32 168, 38 168 Z"
+                fill="url(#sneakerSoleGrad)"
+              />
+
+              {/* Racing Stripe Accent */}
+              <path d="M 115 118 Q 175 124 235 145" stroke="#7c3aed" strokeWidth="6" strokeLinecap="round" />
+
+              {/* Laces and Eyelets */}
+              <path d="M 158 102 L 182 105 M 162 112 L 188 115 M 168 122 L 194 125" stroke="#94a3b8" strokeWidth="3" strokeLinecap="round" />
+
+              {/* Ambient lighting tint */}
+              <rect x="0" y="0" width="350" height="200" fill={ambientTint} style={{ mixBlendMode: 'color-dodge' }} />
             </svg>
           </div>
         );
 
-      // 3: Blue Denim Jacket
+      /* ────────────────────────────────────────────────────────
+         3: BLUE DENIM JACKET (Torso Fit)
+         ──────────────────────────────────────────────────────── */
       case 3:
         return (
-          <div style={{ width: '350px', height: '330px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 420 380" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ width: '360px', height: '340px', position: 'relative' }}>
+            <svg viewBox="0 0 420 380" width="100%" height="100%" fill="none">
               <defs>
-                <linearGradient id="denimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient id="denimWashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#2563eb" />
-                  <stop offset="50%" stopColor="#1d4ed8" />
+                  <stop offset="50%" stopColor={activeColor !== '#18181b' ? activeColor : '#1d4ed8'} />
                   <stop offset="100%" stopColor="#1e3a8a" />
                 </linearGradient>
               </defs>
-              {/* Jacket body */}
+
+              {/* Denim Jacket Silhouette */}
               <path
-                d="M 130 60 Q 210 95 290 60 L 380 115 L 340 190 L 300 165 L 305 360 L 115 360 L 120 165 L 80 190 L 40 115 Z"
-                fill="url(#denimGrad)"
+                d="M 125 55 Q 210 90 295 55 L 390 110 L 345 190 L 305 160 L 310 365 L 110 365 L 115 160 L 75 190 L 30 110 Z"
+                fill="url(#denimWashGrad)"
                 stroke="#60a5fa"
                 strokeWidth="2.5"
               />
-              {/* Collar */}
-              <polygon points="130,60 210,105 170,120 130,60" fill="#1e40af" stroke="#93c5fd" strokeWidth="1.5" />
-              <polygon points="290,60 210,105 250,120 290,60" fill="#1e40af" stroke="#93c5fd" strokeWidth="1.5" />
+
+              {/* Folded Collar Lapels */}
+              <polygon points="125,55 210,102 165,118 125,55" fill="#1e40af" stroke="#93c5fd" strokeWidth="1.5" />
+              <polygon points="295,55 210,102 255,118 295,55" fill="#1e40af" stroke="#93c5fd" strokeWidth="1.5" />
+
               {/* Center Placket */}
-              <rect x="202" y="105" width="16" height="255" fill="#1e3a8a" stroke="#60a5fa" strokeWidth="1" />
-              {/* Metal Buttons */}
-              {[130, 175, 220, 265, 310].map(y => (
-                <circle key={y} cx="210" cy={y} r="5" fill="#facc15" stroke="#ca8a04" strokeWidth="1" />
+              <rect x="202" y="102" width="16" height="263" fill="#1e3a8a" stroke="#60a5fa" strokeWidth="1" />
+
+              {/* Authentic Bronze Shank Buttons */}
+              {[130, 180, 230, 280, 330].map(y => (
+                <g key={y}>
+                  <circle cx="210" cy={y} r="5.5" fill="#ca8a04" stroke="#fef08a" strokeWidth="1" />
+                  <circle cx="209" cy={y - 1} r="2" fill="#fef08a" opacity="0.8" />
+                </g>
               ))}
-              {/* Chest pockets */}
-              <rect x="145" y="160" width="45" height="40" rx="4" fill="#1d4ed8" stroke="#93c5fd" strokeWidth="1.5" />
-              <rect x="230" y="160" width="45" height="40" rx="4" fill="#1d4ed8" stroke="#93c5fd" strokeWidth="1.5" />
+
+              {/* Chest Flap Pockets */}
+              <rect x="140" y="160" width="46" height="42" rx="4" fill="#1d4ed8" stroke="#93c5fd" strokeWidth="1.5" />
+              <rect x="234" y="160" width="46" height="42" rx="4" fill="#1d4ed8" stroke="#93c5fd" strokeWidth="1.5" />
+
+              {/* Ambient lighting tint */}
+              <rect x="0" y="0" width="420" height="380" fill={ambientTint} style={{ mixBlendMode: 'color-dodge' }} />
             </svg>
           </div>
         );
 
-      // 4: Smart Watch
+      /* ────────────────────────────────────────────────────────
+         4: SMART WATCH (Wrist Wear with Live AMOLED Screen)
+         ──────────────────────────────────────────────────────── */
       case 4:
         return (
-          <div style={{ width: '220px', height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 240 260" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ width: '230px', height: '250px', position: 'relative' }}>
+            <svg viewBox="0 0 240 260" width="100%" height="100%" fill="none">
               <defs>
-                <linearGradient id="watchStrap" x1="0%" y1="0%" x2="100%" y2="0%">
+                <linearGradient id="watchStrapGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#1e1e24" />
-                  <stop offset="50%" stopColor="#33333d" />
+                  <stop offset="50%" stopColor={activeColor !== '#18181b' ? activeColor : '#33333d'} />
                   <stop offset="100%" stopColor="#1e1e24" />
                 </linearGradient>
-                <linearGradient id="screenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#0f172a" />
-                  <stop offset="100%" stopColor="#020617" />
-                </linearGradient>
               </defs>
-              {/* Top strap */}
-              <rect x="80" y="10" width="80" height="70" rx="8" fill="url(#watchStrap)" stroke="#4b5563" strokeWidth="1" />
-              {/* Bottom strap */}
-              <rect x="80" y="180" width="80" height="70" rx="8" fill="url(#watchStrap)" stroke="#4b5563" strokeWidth="1" />
-              {/* Watch Case */}
-              <rect x="55" y="65" width="130" height="130" rx="30" fill="#111827" stroke="#9ca3af" strokeWidth="3" />
+
+              {/* Top & Bottom Straps */}
+              <rect x="78" y="8" width="84" height="72" rx="10" fill="url(#watchStrapGrad)" stroke="#4b5563" strokeWidth="1.5" />
+              <rect x="78" y="180" width="84" height="72" rx="10" fill="url(#watchStrapGrad)" stroke="#4b5563" strokeWidth="1.5" />
+
+              {/* Titanium Bezel */}
+              <rect x="52" y="62" width="136" height="136" rx="32" fill="#111827" stroke="#cbd5e1" strokeWidth="3" />
               {/* Digital Crown */}
-              <rect x="187" y="95" width="8" height="24" rx="3" fill="#cbd5e1" />
-              {/* Screen */}
-              <rect x="67" y="77" width="106" height="106" rx="22" fill="url(#screenGrad)" />
-              {/* UI: Time */}
-              <text x="120" y="122" fill="#38bdf8" fontSize="24" fontWeight="bold" textAnchor="middle" fontFamily="monospace">10:42</text>
-              <text x="120" y="142" fill="#a855f7" fontSize="12" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">♥ 74 BPM</text>
-              <circle cx="120" cy="130" r="44" stroke="#7c3aed" strokeWidth="3" strokeDasharray="180 50" fill="none" />
+              <rect x="188" y="94" width="8" height="26" rx="3" fill="#cbd5e1" />
+
+              {/* Active AMOLED Screen with Real Time */}
+              <rect x="68" y="78" width="104" height="104" rx="24" fill="#020617" />
+              <text x="120" y="118" fill="#38bdf8" fontSize="22" fontWeight="700" textAnchor="middle" fontFamily="monospace">
+                10:42
+              </text>
+              <text x="120" y="138" fill="#ec4899" fontSize="12" fontWeight="600" textAnchor="middle" fontFamily="sans-serif">
+                ♥ 76 BPM
+              </text>
+              <circle cx="120" cy="130" r="42" stroke="#6366f1" strokeWidth="2.5" strokeDasharray="160 50" fill="none" />
+
+              {/* Ambient lighting tint */}
+              <rect x="0" y="0" width="240" height="260" fill={ambientTint} style={{ mixBlendMode: 'color-dodge' }} />
             </svg>
           </div>
         );
 
-      // 5: Wireless Headphones
+      /* ────────────────────────────────────────────────────────
+         5: WIRELESS HEADPHONES (Headwear)
+         ──────────────────────────────────────────────────────── */
       case 5:
         return (
-          <div style={{ width: '280px', height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 320 280" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ width: '290px', height: '250px', position: 'relative' }}>
+            <svg viewBox="0 0 320 280" width="100%" height="100%" fill="none">
               <defs>
-                <linearGradient id="headbandGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <linearGradient id="headbandMetallic" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#1e1e24" />
-                  <stop offset="50%" stopColor="#4f46e5" />
+                  <stop offset="50%" stopColor={activeColor !== '#18181b' ? activeColor : '#4f46e5'} />
                   <stop offset="100%" stopColor="#1e1e24" />
                 </linearGradient>
-                <linearGradient id="earcupGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#312e81" />
-                  <stop offset="100%" stopColor="#1e1b4b" />
-                </linearGradient>
               </defs>
+
               {/* Arch Headband */}
               <path
-                d="M 60 170 C 50 60, 270 60, 260 170"
-                stroke="url(#headbandGrad)"
-                strokeWidth="20"
+                d="M 55 170 C 45 55, 275 55, 265 170"
+                stroke="url(#headbandMetallic)"
+                strokeWidth="22"
                 strokeLinecap="round"
                 fill="none"
               />
               <path
-                d="M 75 140 C 70 85, 250 85, 245 140"
+                d="M 68 140 C 62 75, 258 75, 252 140"
                 stroke="#6366f1"
-                strokeWidth="4"
+                strokeWidth="3.5"
                 fill="none"
-                opacity="0.8"
+                opacity="0.9"
               />
-              {/* Left Earcup */}
-              <g transform="translate(35, 140)">
-                <ellipse cx="25" cy="45" rx="25" ry="40" fill="url(#earcupGrad)" stroke="#818cf8" strokeWidth="2.5" />
-                <ellipse cx="25" cy="45" rx="14" ry="24" fill="#0f172a" />
-                <circle cx="25" cy="45" r="7" fill="#7c3aed" />
+
+              {/* Left Padded Earcup */}
+              <g transform="translate(32, 135)">
+                <ellipse cx="28" cy="48" rx="28" ry="46" fill="#1e1b4b" stroke="#818cf8" strokeWidth="2.5" />
+                <ellipse cx="28" cy="48" rx="16" ry="28" fill="#09090b" />
+                <circle cx="28" cy="48" r="8" fill="#7c3aed" />
               </g>
-              {/* Right Earcup */}
-              <g transform="translate(235, 140)">
-                <ellipse cx="25" cy="45" rx="25" ry="40" fill="url(#earcupGrad)" stroke="#818cf8" strokeWidth="2.5" />
-                <ellipse cx="25" cy="45" rx="14" ry="24" fill="#0f172a" />
-                <circle cx="25" cy="45" r="7" fill="#7c3aed" />
+
+              {/* Right Padded Earcup */}
+              <g transform="translate(232, 135)">
+                <ellipse cx="28" cy="48" rx="28" ry="46" fill="#1e1b4b" stroke="#818cf8" strokeWidth="2.5" />
+                <ellipse cx="28" cy="48" rx="16" ry="28" fill="#09090b" />
+                <circle cx="28" cy="48" r="8" fill="#7c3aed" />
               </g>
+
+              {/* Ambient lighting tint */}
+              <rect x="0" y="0" width="320" height="280" fill={ambientTint} style={{ mixBlendMode: 'color-dodge' }} />
             </svg>
           </div>
         );
 
-      // 6: Women's Casual Dress
+      /* ────────────────────────────────────────────────────────
+         6: WOMEN'S CASUAL DRESS (Full Torso & Flow)
+         ──────────────────────────────────────────────────────── */
       case 6:
         return (
-          <div style={{ width: '320px', height: '360px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 380 440" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ width: '330px', height: '370px', position: 'relative' }}>
+            <svg viewBox="0 0 380 440" width="100%" height="100%" fill="none">
               <defs>
-                <linearGradient id="dressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient id="dressFlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#ec4899" />
-                  <stop offset="50%" stopColor="#db2777" />
-                  <stop offset="100%" stopColor="#be185d" />
+                  <stop offset="50%" stopColor={activeColor !== '#18181b' ? activeColor : '#db2777'} />
+                  <stop offset="100%" stopColor="#9d174d" />
                 </linearGradient>
               </defs>
-              {/* Dress body */}
+
+              {/* Flowy Chiffon Dress Silhouette */}
               <path
-                d="M 150 40 Q 190 70 230 40 L 250 110 L 220 180 L 330 420 Q 190 440 50 420 L 160 180 L 130 110 Z"
-                fill="url(#dressGrad)"
+                d="M 145 35 Q 190 65 235 35 L 255 105 L 225 175 L 340 425 Q 190 445 40 425 L 155 175 L 125 105 Z"
+                fill="url(#dressFlowGrad)"
                 stroke="#f472b6"
                 strokeWidth="2"
               />
-              {/* Waist belt */}
-              <rect x="155" y="175" width="70" height="14" rx="4" fill="#4a044e" stroke="#fbcfe8" strokeWidth="1" />
-              {/* Flow folds */}
+
+              {/* Cinched Waist Tie Detail */}
+              <rect x="150" y="172" width="80" height="14" rx="4" fill="#4a044e" stroke="#fbcfe8" strokeWidth="1.5" />
+
+              {/* Flow lines */}
               <path d="M 175 190 Q 150 310 110 420" stroke="rgba(255,255,255,0.25)" strokeWidth="3" fill="none" />
               <path d="M 205 190 Q 230 310 270 420" stroke="rgba(255,255,255,0.25)" strokeWidth="3" fill="none" />
-              <path d="M 190 190 L 190 425" stroke="rgba(0,0,0,0.15)" strokeWidth="2" />
+
+              {/* Ambient lighting tint */}
+              <rect x="0" y="0" width="380" height="440" fill={ambientTint} style={{ mixBlendMode: 'color-dodge' }} />
             </svg>
           </div>
         );
 
-      // 7: Premium Backpack
+      /* ────────────────────────────────────────────────────────
+         7: PREMIUM BACKPACK (Shoulder Mount)
+         ──────────────────────────────────────────────────────── */
       case 7:
         return (
-          <div style={{ width: '280px', height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 320 380" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ width: '290px', height: '330px', position: 'relative' }}>
+            <svg viewBox="0 0 320 380" width="100%" height="100%" fill="none">
               <defs>
-                <linearGradient id="bagGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <linearGradient id="backpackCordura" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="#374151" />
-                  <stop offset="100%" stopColor="#111827" />
+                  <stop offset="100%" stopColor={activeColor !== '#18181b' ? activeColor : '#111827'} />
                 </linearGradient>
               </defs>
+
               {/* Top Handle */}
-              <path d="M 120 70 C 120 40, 200 40, 200 70" stroke="#4b5563" strokeWidth="10" strokeLinecap="round" fill="none" />
-              {/* Main bag body */}
-              <rect x="70" y="70" width="180" height="270" rx="36" fill="url(#bagGrad)" stroke="#6b7280" strokeWidth="2" />
-              {/* Front pocket */}
-              <rect x="90" y="190" width="140" height="120" rx="18" fill="#1f2937" stroke="#7c3aed" strokeWidth="2" />
-              {/* Zipper details */}
-              <path d="M 90 120 L 230 120" stroke="#9ca3af" strokeWidth="4" strokeDasharray="6 4" />
-              <path d="M 105 215 L 215 215" stroke="#a78bfa" strokeWidth="3" strokeDasharray="5 3" />
-              {/* Accent tag */}
-              <rect x="145" y="245" width="30" height="16" rx="4" fill="#7c3aed" />
+              <path d="M 115 65 C 115 35, 205 35, 205 65" stroke="#4b5563" strokeWidth="11" strokeLinecap="round" fill="none" />
+
+              {/* Main Backpack Body */}
+              <rect x="65" y="65" width="190" height="280" rx="40" fill="url(#backpackCordura)" stroke="#6b7280" strokeWidth="2" />
+
+              {/* Front Pocket */}
+              <rect x="85" y="185" width="150" height="130" rx="18" fill="#1f2937" stroke="#7c3aed" strokeWidth="2" />
+
+              {/* Metal Zipper Tracks */}
+              <path d="M 85 118 L 235 118" stroke="#9ca3af" strokeWidth="4" strokeDasharray="6 4" />
+              <path d="M 100 215 L 220 215" stroke="#a78bfa" strokeWidth="3" strokeDasharray="5 3" />
+
+              {/* Ambient lighting tint */}
+              <rect x="0" y="0" width="320" height="380" fill={ambientTint} style={{ mixBlendMode: 'color-dodge' }} />
             </svg>
           </div>
         );
 
-      // 8: Stylish Sunglasses (Default)
+      /* ────────────────────────────────────────────────────────
+         8: STYLISH POLARIZED SUNGLASSES (Face Mount)
+         ──────────────────────────────────────────────────────── */
       case 8:
       default:
         return (
-          <div style={{ width: '270px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg viewBox="0 0 340 130" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div style={{ width: '280px', height: '115px', position: 'relative' }}>
+            <svg viewBox="0 0 340 130" width="100%" height="100%" fill="none">
               <defs>
-                <linearGradient id="lensGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.95" />
-                  <stop offset="50%" stopColor="#4338ca" stopOpacity="0.88" />
-                  <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.85" />
+                <linearGradient id="sunglassLens" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#0f172a" stopOpacity="0.86" />
+                  <stop offset="60%" stopColor="#1e1b4b" stopOpacity="0.80" />
+                  <stop offset="100%" stopColor="#312e81" stopOpacity="0.72" />
                 </linearGradient>
-                <linearGradient id="frameGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#18181b" />
-                  <stop offset="50%" stopColor="#27272a" />
-                  <stop offset="100%" stopColor="#09090b" />
-                </linearGradient>
-                <linearGradient id="reflection" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
-                  <stop offset="40%" stopColor="#ffffff" stopOpacity="0.1" />
-                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                <linearGradient id="sunglassReflection" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.75" />
+                  <stop offset="35%" stopColor="#ffffff" stopOpacity="0.12" />
+                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
-              {/* Left Lens */}
+
+              {/* Left Polarized Lens (Translucent so the eyes peek through!) */}
               <path
                 d="M 40 35 C 75 32, 130 32, 145 45 C 150 70, 140 105, 105 112 C 60 115, 30 90, 40 35 Z"
-                fill="url(#lensGrad)"
+                fill="url(#sunglassLens)"
               />
-              {/* Left Lens Reflection */}
-              <path
-                d="M 50 42 L 80 42 L 55 95 L 45 85 Z"
-                fill="url(#reflection)"
-              />
-              {/* Right Lens */}
+              <path d="M 50 42 L 85 42 L 58 98 L 46 88 Z" fill="url(#sunglassReflection)" />
+
+              {/* Right Polarized Lens */}
               <path
                 d="M 300 35 C 265 32, 210 32, 195 45 C 190 70, 200 105, 235 112 C 280 115, 310 90, 300 35 Z"
-                fill="url(#lensGrad)"
+                fill="url(#sunglassLens)"
               />
-              {/* Right Lens Reflection */}
-              <path
-                d="M 290 42 L 260 42 L 285 95 L 295 85 Z"
-                fill="url(#reflection)"
-              />
-              {/* Full Eyewear Frame */}
+              <path d="M 290 42 L 255 42 L 282 98 L 294 88 Z" fill="url(#sunglassReflection)" />
+
+              {/* Handcrafted Italian Acetate Frame */}
               <path
                 d="M 15 35 C 45 22, 135 20, 155 42 C 162 48, 178 48, 185 42 C 205 20, 295 22, 325 35 C 335 40, 335 55, 320 55 C 300 55, 305 98, 240 120 C 195 125, 180 85, 170 85 C 160 85, 145 125, 100 120 C 35 98, 40 55, 20 55 C 5 55, 5 40, 15 35 Z"
                 fill="none"
-                stroke="url(#frameGrad)"
-                strokeWidth="10"
+                stroke={activeColor}
+                strokeWidth="11"
                 strokeLinejoin="round"
               />
-              {/* Bridge */}
-              <path d="M 148 45 Q 170 38 192 45" stroke="#a1a1aa" strokeWidth="4" fill="none" />
-              {/* Gold Temple Accents */}
-              <rect x="18" y="36" width="12" height="6" rx="2" fill="#facc15" />
-              <rect x="310" y="36" width="12" height="6" rx="2" fill="#facc15" />
+
+              {/* Silver Bridge Connector */}
+              <path d="M 148 45 Q 170 37 192 45" stroke="#cbd5e1" strokeWidth="4.5" fill="none" />
+
+              {/* 24K Gold Temple Rivets */}
+              <rect x="18" y="36" width="11" height="5" rx="1.5" fill="#facc15" stroke="#ca8a04" strokeWidth="0.5" />
+              <rect x="311" y="36" width="11" height="5" rx="1.5" fill="#facc15" stroke="#ca8a04" strokeWidth="0.5" />
+
+              {/* Ambient lighting tint */}
+              <rect x="0" y="0" width="340" height="130" fill={ambientTint} style={{ mixBlendMode: 'color-dodge' }} />
             </svg>
           </div>
         );
@@ -340,19 +466,26 @@ export default function TryOnOverlay({
 
   return (
     <div
-      className="tryon-overlay-container"
-      style={style}
-      onPointerDown={onPointerDown}
-      title="Click and drag to adjust position"
+      className={`tryon-overlay-container ${isLayerActive ? 'layer-active' : ''}`}
+      style={containerStyle}
+      onPointerDown={(e) => {
+        if (onSelectLayer) onSelectLayer(product.id);
+        if (onPointerDown) onPointerDown(e, product.id);
+      }}
+      title={`Drag to reposition ${product.name}`}
+      role="region"
+      aria-label={`Virtual Try-On: ${product.name}`}
     >
-      {/* Visual bounding indicator on hover/drag */}
       <div className={`tryon-item-wrapper ${isDragging ? 'dragging' : ''}`}>
-        {renderProductGraphic()}
-        
-        {/* Floating alignment guides when dragging */}
+        {renderWearableCutout()}
+
+        {/* Dynamic Drag Crosshair & Boundary HUD */}
         {isDragging && (
-          <div className="tryon-drag-guides">
+          <div className="tryon-drag-guides" aria-hidden="true">
             <span className="guide-center" />
+            <div className="guide-hud-badge">
+              {product.tryOnLabel} • {Math.round(scale * 100)}%
+            </div>
           </div>
         )}
       </div>

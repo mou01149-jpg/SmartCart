@@ -193,7 +193,7 @@
 /* Footer Action Buttons */
 .product-footer-actions {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: auto;
 }
@@ -201,16 +201,50 @@
 .card-tryon-btn {
   color: var(--primary);
   border-color: var(--primary);
-  font-size: 12px;
-  padding: 8px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 7px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .card-tryon-btn:hover {
   background: rgba(124, 58, 237, 0.08);
 }
 
+.card-bargain-btn {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 7px 8px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-bargain-btn:hover {
+  background: #0f172a;
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+}
+
 .add-cart-btn {
-  font-size: 12px;
+  grid-column: 1 / -1;
+  font-size: 12.5px;
   padding: 8px 12px;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }

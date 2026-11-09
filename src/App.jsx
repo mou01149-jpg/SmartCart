@@ -7,6 +7,7 @@ import Cart from './components/Cart.jsx';
 import Checkout from './components/Checkout.jsx';
 import OrdersView from './components/OrdersView.jsx';
 import AuthModal from './components/AuthModal.jsx';
+import AIBargainModal from './components/AIBargainModal.jsx';
 import './App.css';
 
 /* ─── LocalStorage Persistence Keys ───────────────────────── */
@@ -40,6 +41,10 @@ export default function App() {
 
   // Auth modal
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+
+  // AI Bargain Modal
+  const [isBargainOpen, setIsBargainOpen] = useState(false);
+  const [bargainProduct, setBargainProduct] = useState(null);
 
   // Toasts
   const [toasts, setToasts] = useState([]);
@@ -85,17 +90,47 @@ export default function App() {
     navigate('tryon');
   }, [navigate]);
 
+  /* ─── AI Bargaining Handlers ──────────────────────────── */
+  const handleOpenBargain = useCallback((product = null) => {
+    setBargainProduct(product);
+    setIsBargainOpen(true);
+  }, []);
+
+  const handleApplyBargainDiscount = useCallback((couponCode, discountPercent, product) => {
+    const discountedPrice = Math.round(product.price * (1 - discountPercent / 100));
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item =>
+          item.id === product.id
+            ? { ...item, price: discountedPrice, customDeal: `${discountPercent}% OFF (${couponCode})` }
+            : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          ...product,
+          price: discountedPrice,
+          quantity: 1,
+          customDeal: `${discountPercent}% OFF (${couponCode})`,
+        },
+      ];
+    });
+    showToast(`Deal Applied! Code ${couponCode} (${discountPercent}% OFF) claimed!`, 'success');
+  }, [showToast]);
+
   /* ─── Cart Handlers ───────────────────────────────────── */
   const addToCart = useCallback((product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
-        showToast(`${product.name} quantity increased! 🛒`, 'info');
+        showToast(`${product.name} quantity increased in your cart!`, 'info');
         return prev.map(item =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      showToast(`${product.name} added to cart! 🛍️`, 'success');
+      showToast(`${product.name} added to cart!`, 'success');
       return [...prev, { ...product, quantity: 1 }];
     });
   }, [showToast]);
@@ -130,7 +165,7 @@ export default function App() {
         showToast('Removed from wishlist.', 'info');
         return prev.filter(id => id !== productId);
       }
-      showToast('Added to wishlist! ❤️', 'success');
+      showToast('Added to wishlist!', 'success');
       return [...prev, productId];
     });
   }, [showToast]);
@@ -139,13 +174,13 @@ export default function App() {
   const handleOrderPlaced = useCallback((order) => {
     setOrders(prev => [order, ...prev]);
     setCart([]); // Clear cart upon successful order
-    showToast(`Order #${order.orderId} Placed Successfully! 🎉`, 'success');
+    showToast(`Order #${order.orderId} Placed Successfully!`, 'success');
   }, [showToast]);
 
   /* ─── Auth Handlers ───────────────────────────────────── */
   const handleLoginSuccess = useCallback((userData) => {
     setUser(userData);
-    showToast(`Welcome back, ${userData.name}! 👋`, 'success');
+    showToast(`Welcome back, ${userData.name}!`, 'success');
   }, [showToast]);
 
   const handleLogout = useCallback(() => {
@@ -184,6 +219,7 @@ export default function App() {
               wishlist={wishlist}
               onToggleWishlist={toggleWishlist}
               onTryOn={handleTryOn}
+              onBargain={handleOpenBargain}
             />
           </>
         )}
@@ -195,6 +231,7 @@ export default function App() {
             wishlist={wishlist}
             onToggleWishlist={toggleWishlist}
             onTryOn={handleTryOn}
+            onBargain={handleOpenBargain}
           />
         )}
 
@@ -204,6 +241,7 @@ export default function App() {
             selectedProductId={activeTryOnId}
             onAddToCart={addToCart}
             onBuyNow={handleBuyNow}
+            onOpenBargain={handleOpenBargain}
           />
         )}
 
@@ -215,6 +253,7 @@ export default function App() {
             onRemove={removeFromCart}
             onClose={() => navigate('products')}
             onCheckout={() => navigate('checkout')}
+            onBargain={handleOpenBargain}
           />
         )}
 
@@ -251,7 +290,7 @@ export default function App() {
         <div className="container footer-inner">
           <div className="footer-brand">
             <span className="logo-text" style={{ fontSize: '1.3rem', fontWeight: 800 }}>
-              🛒 Smart<span style={{ color: 'var(--primary)' }}>Cart</span>
+              Smart<span style={{ color: 'var(--primary)' }}>Cart</span>
             </span>
             <p>Shop smarter with real-time AR Camera Virtual Try-On and Flipkart-grade checkout.</p>
           </div>
@@ -260,7 +299,7 @@ export default function App() {
               <h4>Shop & Try-On</h4>
               <button onClick={() => navigate('products')}>All Products</button>
               <button onClick={() => { setActiveTryOnId(8); navigate('tryon'); }}>
-                Camera Virtual Try-On
+                Virtual Try-On Studio
               </button>
               <button onClick={() => navigate('cart')}>Shopping Cart</button>
               <button onClick={() => navigate('orders')}>My Orders</button>
@@ -287,14 +326,55 @@ export default function App() {
         {toasts.map(toast => (
           <div key={toast.id} className={`toast ${toast.type}`} role="alert">
             <span aria-hidden="true">
-              {toast.type === 'success' && '✅'}
-              {toast.type === 'error'   && '❌'}
-              {toast.type === 'info'    && 'ℹ️'}
+              {toast.type === 'success' && (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+              {toast.type === 'error' && (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+              )}
+              {toast.type === 'info' && (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+              )}
             </span>
             {toast.message}
           </div>
         ))}
       </div>
+
+      {/* 🤖 SmartCart AI Bargain Modal */}
+      {isBargainOpen && (
+        <AIBargainModal
+          key={bargainProduct ? bargainProduct.id : 'default'}
+          isOpen={isBargainOpen}
+          onClose={() => setIsBargainOpen(false)}
+          initialProduct={bargainProduct}
+          onApplyDiscount={handleApplyBargainDiscount}
+        />
+      )}
+
+      {/* Floating Bargain with AI Launcher Pill */}
+      <button
+        className="floating-bargain-launcher"
+        onClick={() => handleOpenBargain(null)}
+        title="Negotiate deals and discounts with SmartCart AI"
+        aria-label="Open AI Bargain Assistant"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+          <rect x="4" y="8" width="16" height="12" rx="4"/>
+          <line x1="9" y1="13" x2="9" y2="13.01"/>
+          <line x1="15" y1="13" x2="15" y2="13.01"/>
+          <path d="M10 17h4"/>
+        </svg>
+        <span>Bargain with AI</span>
+        <span className="launcher-ai-badge">LIVE</span>
+      </button>
     </div>
   );
 }
