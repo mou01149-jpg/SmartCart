@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { submitOrder } from '../services/api.js';
 import './Checkout.css';
 
 export default function Checkout({
@@ -56,6 +57,7 @@ export default function Checkout({
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStage, setProcessingStage] = useState('');
   const [completedOrder, setCompletedOrder] = useState(null);
+  const [checkoutError, setCheckoutError] = useState('');
 
   // Calculate pricing
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -79,7 +81,9 @@ export default function Checkout({
   }
 
   /* ─── Payment Execution Simulation ───────────────────── */
-  function handleProceedToPay() {
+  async function handleProceedToPay() {
+    if (isProcessing) return;
+
     if (paymentMethod === 'cod' && codCaptcha !== generatedCaptcha) {
       alert(`Invalid captcha. Please enter "${generatedCaptcha}" to confirm COD.`);
       return;
@@ -97,9 +101,11 @@ export default function Checkout({
 
     // Launch Gateway Simulator
     setIsProcessing(true);
+    setCheckoutError('');
     setProcessingStage('Connecting to SmartCart 256-Bit Encrypted Gateway...');
 
-    setTimeout(() => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 900));
       setProcessingStage(
         paymentMethod === 'upi'
           ? `Authenticating with ${upiOption.toUpperCase()} UPI Gateway...`
@@ -109,42 +115,38 @@ export default function Checkout({
           ? `Contacting ${selectedBank} Net Banking Server...`
           : 'Verifying Cash On Delivery Verification...'
       );
-    }, 900);
 
-    setTimeout(() => {
+      await new Promise(resolve => setTimeout(resolve, 900));
       setProcessingStage('Verifying token and authorizing amount...');
-    }, 1800);
 
-    setTimeout(() => {
-      // Order completed
       const order = {
-        orderId: `OD${Math.floor(100000000000 + Math.random() * 900000000000)}`,
-        items: [...cart],
+        items: cart.map(({ id, name, price, quantity, category, image, customDeal }) => ({
+          id, name, price, quantity, category, image, customDeal,
+        })),
         amount: finalTotal,
         paymentMethod:
           paymentMethod === 'upi'
             ? `UPI (${upiOption.toUpperCase()})`
             : paymentMethod === 'card'
-            ? `Card (ending in ${cardDetails.number.slice(-4) || '4242'})`
+            ? 'Card'
             : paymentMethod === 'netbanking'
             ? `Net Banking (${selectedBank})`
             : 'Cash on Delivery (COD)',
         shippingAddress: addresses[selectedAddressIndex] || addresses[0],
-        date: new Date().toLocaleDateString('en-IN', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        estimatedDelivery: 'Tomorrow, by 8:00 PM',
         status: 'Order Confirmed',
+        estimatedDelivery: 'Tomorrow, by 8:00 PM',
       };
+      const result = await submitOrder(order);
+      const savedOrder = result.order || { ...order, orderId: result.orderId };
 
       setIsProcessing(false);
-      setCompletedOrder(order);
-      if (onOrderPlaced) onOrderPlaced(order);
-    }, 2800);
+      setCompletedOrder(savedOrder);
+      if (onOrderPlaced) onOrderPlaced(savedOrder);
+    } catch (error) {
+      setIsProcessing(false);
+      setProcessingStage('');
+      setCheckoutError(error.message || 'Unable to save your order. Please try again.');
+    }
   }
 
   /* ─── Render Order Confirmation View ─────────────────── */
@@ -267,6 +269,11 @@ export default function Checkout({
               256-Bit SSL Encryption • PCI-DSS Certified
             </div>
           </div>
+        </div>
+      )}
+      {checkoutError && (
+        <div className="checkout-error" role="alert">
+          {checkoutError}
         </div>
       )}
 

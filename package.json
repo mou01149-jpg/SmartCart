@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test",
+    "sam:build": "sam build --template-file backend/template.yaml",
+    "deploy": "powershell -ExecutionPolicy Bypass -File backend/scripts/deploy.ps1"
   },
   "dependencies": {
     "react": "^19.2.8",

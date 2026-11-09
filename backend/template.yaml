@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SmartCart API backed by existing DynamoDB tables and Lambda execution role.
+
+Parameters:
+  ExistingLambdaRoleArn:
+    Type: String
+    Description: ARN of the existing SmartCartLambdaRole execution role.
+  ExistingLambdaRoleName:
+    Type: String
+    Default: SmartCartLambdaRole
+    Description: Name of the existing Lambda execution role to attach the least-privilege policy to.
+  ProductsTableName:
+    Type: String
+    Description: Name of the existing products table.
+  OrdersTableName:
+    Type: String
+    Description: Name of the existing orders table.
+  OrdersPartitionKeyName:
+    Type: String
+    Description: Existing orders table partition key attribute that will store the generated order ID.
+  OrdersSortKeyName:
+    Type: String
+    Default: ''
+    Description: Optional existing string sort key attribute. When set, it stores the order createdAt timestamp.
+  CloudFrontUrl:
+    Type: String
+    Default: ''
+    Description: Existing CloudFront distribution URL for product images, not the Amplify website URL.
+  CorsAllowOrigin:
+    Type: String
+    Default: https://main.d24nduuqu9magt.amplifyapp.com
+    Description: Exact Amplify website origin, with no trailing slash.
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 15
+    MemorySize: 256
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        PRODUCTS_TABLE: !Ref ProductsTableName
+        ORDERS_TABLE: !Ref OrdersTableName
+        ORDERS_PARTITION_KEY: !Ref OrdersPartitionKeyName
+        ORDERS_SORT_KEY: !Ref OrdersSortKeyName
+        CLOUDFRONT_URL: !Ref CloudFrontUrl
+        CORS_ALLOW_ORIGIN: !Ref CorsAllowOrigin
+
+Resources:
+  SmartCartExecutionRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: SmartCartLambdaDynamoDbAndLogs
+      Roles:
+        - !Ref ExistingLambdaRoleName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ReadExistingProducts
+            Effect: Allow
+            Action:
+              - dynamodb:Scan
+            Resource: !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProductsTableName}'
+          - Sid: WriteExistingOrders
+            Effect: Allow
+            Action:
+              - dynamodb:PutItem
+            Resource: !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${OrdersTableName}'
+          - Sid: WriteSmartCartLambdaLogs
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/SmartCartGetProducts'
+              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/SmartCartGetProducts:log-stream:*'
+              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/SmartCartCreateOrder'
+              - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/SmartCartCreateOrder:log-stream:*'
+
+  SmartCartApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Description: SmartCart e-commerce API
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: !Sub "'${CorsAllowOrigin}'"
+
+  GetProductsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SmartCartGetProducts
+      CodeUri: ./
+      Handler: src/handlers/getProducts.handler
+      Description: Retrieves products from the existing DynamoDB products table.
+      Role: !Ref ExistingLambdaRoleArn
+      Events:
+        GetProductsApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartCartApi
+            Path: /products
+            Method: GET
+
+  CreateOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SmartCartCreateOrder
+      CodeUri: ./
+      Handler: src/handlers/createOrder.handler
+      Description: Validates and saves orders to the existing DynamoDB orders table.
+      Role: !Ref ExistingLambdaRoleArn
+      Events:
+        CreateOrderApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartCartApi
+            Path: /orders
+            Method: POST
+
+Outputs:
+  SmartCartApiEndpoint:
+    Description: API Gateway base URL; configure this as VITE_API_BASE_URL in Amplify.
+    Value: !Sub 'https://${SmartCartApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod'
+  GetProductsEndpoint:
+    Description: GET /products endpoint.
+    Value: !Sub 'https://${SmartCartApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod/products'
+  CreateOrderEndpoint:
+    Description: POST /orders endpoint.
+    Value: !Sub 'https://${SmartCartApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod/orders'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Navbar from './components/Navbar.jsx';
 import Hero from './components/Hero.jsx';
 import ProductsSection from './components/ProductsSection.jsx';
@@ -8,6 +8,7 @@ import Checkout from './components/Checkout.jsx';
 import OrdersView from './components/OrdersView.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import AIBargainModal from './components/AIBargainModal.jsx';
+import { fetchProducts } from './services/api.js';
 import './App.css';
 
 /* ─── LocalStorage Persistence Keys ───────────────────────── */
@@ -35,6 +36,10 @@ export default function App() {
   const [wishlist, setWishlist] = useState(() => loadFromStorage(WISHLIST_KEY, []));
   const [user, setUser] = useState(() => loadFromStorage(USER_KEY, null));
   const [orders, setOrders] = useState(() => loadFromStorage(ORDERS_KEY, []));
+  const [products, setProducts] = useState([]);
+  const [isProductsLoading, setIsProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState('');
+  const productRequestId = useRef(0);
 
   // Virtual Try-On selected product ID (default to Sunglasses #8)
   const [activeTryOnId, setActiveTryOnId] = useState(8);
@@ -69,11 +74,51 @@ export default function App() {
     try { localStorage.setItem(ORDERS_KEY, JSON.stringify(orders)); } catch {}
   }, [orders]);
 
+  const loadProducts = useCallback(async () => {
+    const requestId = ++productRequestId.current;
+    setIsProductsLoading(true);
+    setProductsError('');
+
+    try {
+      const items = await fetchProducts();
+      if (requestId === productRequestId.current) setProducts(items);
+    } catch (error) {
+      if (requestId === productRequestId.current) {
+        setProducts([]);
+        setProductsError(error.message || 'An unexpected error occurred while loading products.');
+      }
+    } finally {
+      if (requestId === productRequestId.current) setIsProductsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const requestId = ++productRequestId.current;
+    fetchProducts()
+      .then(items => {
+        if (requestId === productRequestId.current) setProducts(items);
+      })
+      .catch(error => {
+        if (requestId === productRequestId.current) {
+          setProducts([]);
+          setProductsError(error.message || 'An unexpected error occurred while loading products.');
+        }
+      })
+      .finally(() => {
+        if (requestId === productRequestId.current) setIsProductsLoading(false);
+      });
+
+    return () => {
+      if (requestId === productRequestId.current) productRequestId.current += 1;
+    };
+  }, []);
+
   /* ─── Navigation Helper ───────────────────────────────── */
   const navigate = useCallback((id) => {
     setSection(id);
+    if (id === 'products') void loadProducts();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  }, [loadProducts]);
 
   /* ─── Toast System ────────────────────────────────────── */
   const showToast = useCallback((message, type = 'success') => {
@@ -215,6 +260,10 @@ export default function App() {
               }}
             />
             <ProductsSection
+              products={products}
+              isLoading={isProductsLoading}
+              error={productsError}
+              onRefresh={loadProducts}
               onAddToCart={addToCart}
               wishlist={wishlist}
               onToggleWishlist={toggleWishlist}
@@ -227,6 +276,10 @@ export default function App() {
         {/* PRODUCTS CATALOG SECTION */}
         {section === 'products' && (
           <ProductsSection
+            products={products}
+            isLoading={isProductsLoading}
+            error={productsError}
+            onRefresh={loadProducts}
             onAddToCart={addToCart}
             wishlist={wishlist}
             onToggleWishlist={toggleWishlist}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { resolveProductImage } from '../utils/imageResolver.js';
 import './ProductCard.css';
 
 export default function ProductCard({
@@ -61,7 +62,7 @@ export default function ProductCard({
         <img
           src={imgError
             ? `https://via.placeholder.com/400x300/f3f4f6/9ca3af?text=${encodeURIComponent(product.name)}`
-            : product.image}
+            : resolveProductImage(product.image, product.name)}
           alt={`${product.name} – ${product.category}`}
           className="product-img"
           loading="lazy"

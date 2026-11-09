@@ -1,0 +1,16 @@
+{
+  "name": "smartcart-backend",
+  "version": "1.0.0",
+  "description": "SmartCart Serverless Backend on AWS Lambda, API Gateway, DynamoDB, S3, and CloudFront",
+  "main": "src/handlers/getProducts.js",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "seed": "node scripts/seedProducts.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0"
+  }
+}
+

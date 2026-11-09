@@ -1,21 +1,33 @@
 import { useState, useMemo } from 'react';
 import ProductCard from './ProductCard.jsx';
-import { products, CATEGORIES } from '../data/products.js';
+import { CATEGORIES } from '../data/products.js';
 import './ProductsSection.css';
 
 export default function ProductsSection({
+  products: dynamicProducts = [],
   onAddToCart,
   wishlist,
   onToggleWishlist,
   onTryOn,
   onBargain,
+  isLoading = false,
+  error = '',
+  onRefresh,
 }) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('default');
 
+  const catalog = dynamicProducts;
+  const categories = useMemo(() => [
+    ...new Set([
+      ...CATEGORIES,
+      ...catalog.map(product => product.category).filter(Boolean),
+    ]),
+  ], [catalog]);
+
   const filtered = useMemo(() => {
-    let list = [...products];
+    let list = [...catalog];
 
     // Category filter
     if (activeCategory !== 'All') {
@@ -38,7 +50,7 @@ export default function ProductsSection({
     if (sortBy === 'rating')     list.sort((a, b) => b.rating - a.rating);
 
     return list;
-  }, [search, activeCategory, sortBy]);
+  }, [search, activeCategory, sortBy, catalog]);
 
   return (
     <section className="products-section section" id="products" aria-label="Products">
@@ -52,8 +64,16 @@ export default function ProductsSection({
             </p>
           </div>
 
-          {/* Sort */}
           <div className="sort-wrapper">
+            {onRefresh && (
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={onRefresh}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Refreshing...' : 'Refresh products'}
+              </button>
+            )}
             <label htmlFor="sort-select" className="sort-label">Sort by:</label>
             <select
               id="sort-select"
@@ -100,7 +120,7 @@ export default function ProductsSection({
 
           {/* Category filters */}
           <div className="category-filters" role="group" aria-label="Filter by category">
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button
                 key={cat}
                 className={`category-btn${activeCategory === cat ? ' active' : ''}`}
@@ -114,7 +134,27 @@ export default function ProductsSection({
         </div>
 
         {/* Product grid */}
-        {filtered.length > 0 ? (
+        {isLoading ? (
+          <div className="no-products" role="status" aria-live="polite">
+            <span className="products-spinner" aria-hidden="true" />
+            <p>Loading products...</p>
+          </div>
+        ) : error ? (
+          <div className="no-products" role="alert">
+            <h3>Products could not be loaded</h3>
+            <p>{error}</p>
+            {onRefresh && (
+              <button className="btn btn-outline" onClick={onRefresh}>
+                Try again
+              </button>
+            )}
+          </div>
+        ) : catalog.length === 0 ? (
+          <div className="no-products" role="status">
+            <h3>No products available</h3>
+            <p>The product catalog is currently empty.</p>
+          </div>
+        ) : filtered.length > 0 ? (
           <div
             className="products-grid"
             id="products-grid"
